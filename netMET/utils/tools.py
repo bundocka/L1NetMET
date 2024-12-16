@@ -7,11 +7,12 @@ import uproot
 def getArrays(inputFiles, branches, nFiles=1, fname="data.parquet"):
 
     files = [{file: 'Events'} for file in inputFiles][:nFiles]
-    
+
     # get the data
     data = ak.concatenate([batch for batch in uproot.iterate(files, filter_name=branches)])
     data = formatBranches(data)
-    ak.to_parquet(data, fname)
+    if fname:
+        ak.to_parquet(data, fname)
 
     return data
 
@@ -72,6 +73,15 @@ def getPUPPIMET(data):
     
     return puppiMET, puppiMET_noMu
 
+def apply_pt_cut(data, puppiMET_noMu, cut_value = -1):
+    return data[puppiMET_noMu['PuppiMET_pt'] > cut_value], puppiMET_noMu[puppiMET_noMu['PuppiMET_pt'] > cut_value]
+
+def remove_saturated(data, puppiMET_noMu):
+    for col in data.columns:
+        if "pt" in col:
+            data = data[data[col] < 1000]
+            puppiMET_noMu = puppiMET_noMu[data[col] < 1000]
+    return data, puppiMET_noMu
 
 def flatten(data, puppiMET_noMu, types=[]):
     
@@ -131,7 +141,7 @@ def getSum(data, sumType):
     return etSum
 
 
-def makeDataframe(collections, fileName, nObj=0, keepStruct=False):
+def makeDataframe(collections, fileName=None, nObj=0, keepStruct=False):
     
     object_dfs = []
     for coll in collections:
@@ -156,14 +166,16 @@ def makeDataframe(collections, fileName, nObj=0, keepStruct=False):
     else:
         df.columns = ["{}_{}".format(col[0], col[1]) for col in df.columns]
 
-    df.to_hdf(fileName, 'online', mode='w')
-    
+    if fileName:
+        df.to_hdf(fileName, 'online', mode='w')
+
     return df
 
 
 def arrayToDataframe(array, label, fileName):
 
     df = pd.DataFrame(ak.to_list(array))
-    df.to_hdf(fileName, label, mode='a')
+    if fileName:
+        df.to_hdf(fileName, label, mode='a')
     
     return df
