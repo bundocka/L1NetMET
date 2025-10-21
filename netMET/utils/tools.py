@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import awkward as ak
-import utils.branches as branches
+from . import branches
 import uproot
 
 def getArrays(inputFiles, branches, nFiles=1, fname="data.parquet"):
